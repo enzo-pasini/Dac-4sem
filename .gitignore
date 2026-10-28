@@ -1,0 +1,6 @@
+# Cache do Python (gerado automaticamente)
+__pycache__/
+*.pyc
+
+# Anotações pessoais de estudo (VibeWise)
+.vibe-wise/

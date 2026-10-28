@@ -1,0 +1,413 @@
+%%
+%% Copyright 2007, 2008, 2009 Elsevier Ltd
+%%
+%% This file is part of the 'Elsarticle Bundle'.
+%% ---------------------------------------------
+%%
+%% It may be distributed under the conditions of the LaTeX Project Public
+%% License, either version 1.2 of this license or (at your option) any
+%% later version.  The latest version of this license is in
+%%    http://www.latex-project.org/lppl.txt
+%% and version 1.2 or later is part of all distributions of LaTeX
+%% version 1999/12/01 or later.
+%%
+%% The list of all files belonging to the 'Elsarticle Bundle' is
+%% given in the file `manifest.txt'.
+%%
+
+%% Template article for Elsevier's document class `elsarticle'
+%% with numbered style bibliographic references
+%% SP 2008/03/01
+
+\documentclass[preprint,10pt,5p]{elsarticle}
+
+\usepackage[brazil]{babel}
+\usepackage{amssymb}
+\usepackage{lineno}
+\usepackage{amsmath}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{subcaption}
+\usepackage{hhline}
+\usepackage{hyperref}
+\usepackage{booktabs}
+
+%% Acrescentado: gráficos e diagramas desenhados direto no LaTeX
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
+\usetikzlibrary{positioning}
+
+%% Algoritmos em português
+\floatname{algorithm}{Algoritmo}
+\renewcommand{\algorithmicrequire}{\textbf{Entrada:}}
+\renewcommand{\algorithmicensure}{\textbf{Saída:}}
+
+
+%% AQUI COMEÇA A PARTE EM QUE VOCÊ DEVE MEXER ...
+
+\journal{Universidade Católica Dom Bosco}
+
+
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{Evolução da Educação Pública em Mato Grosso do Sul (2018--2026):\\Dados Abertos, Banco Relacional e Dashboard Interativo}
+
+\address[label1]{Universidade Católica Dom Bosco, Campo Grande, Brazil}
+
+\author[label1]{Enzo Pasini}
+\ead{enzo.cpasini@gmail.com}
+
+\author[label1]{Lucas Fiaes}
+\ead{ra204359@ucdb.br}
+
+\author[label1]{Victor Hugo}
+\ead{ra204470@ucdb.br}
+
+\author[label1]{Mike Weyller}
+\ead{ra195996@ucdb.br}
+
+\author[label1]{Davi Ribeiro}
+\ead{ra178762@ucdb.br}
+
+%% Último autor = professor orientador (líder do projeto)
+\author[label1]{Renato Gil}
+
+
+\begin{abstract}
+Este trabalho investiga se a educação pública de Mato Grosso do Sul está evoluindo, no contexto do Objetivo de Desenvolvimento Sustentável 4 (ODS~4), a partir dos dados abertos de matrículas por unidade escolar publicados pelo governo do estado. Desenvolvemos um sistema em Python que lê oito arquivos CSV anuais (2018 a 2026, sem 2025), representa municípios, escolas e registros anuais como objetos, remove escolas repetidas entre os anos com tabelas \textit{hash} e grava a série histórica em um banco relacional SQLite, consultado por um \textit{dashboard} Streamlit com filtros de município e ano. A carga foi validada com 32 testes automatizados e com consultas de consistência: 3.703 registros, 598 escolas e 79 municípios, sem nenhuma divergência entre o banco e os arquivos de origem. A busca por município e ano no \textit{hash} foi cerca de 1.400 vezes mais rápida que a busca sequencial em lista. A análise mostrou que a taxa de aprovação da rede pública subiu de 81,3\% em 2018 para 88,7\% em 2023, mas também revelou problemas sérios nos dados: o abandono deixou de ser registrado a partir de 2020, e os anos de 2024 e 2026 não têm resultados finais. Por isso, definimos e documentamos quais anos são válidos para cada indicador.
+\end{abstract}
+
+\begin{keyword}
+dados abertos \sep indicadores educacionais \sep taxa de aprovação \sep tabela hash \sep qualidade de dados
+\end{keyword}
+
+
+\end{frontmatter}
+
+
+
+%%%%%%%%%%%%%% I N T R O D U C A O %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Introdução}
+\label{intro}
+
+O Objetivo de Desenvolvimento Sustentável 4 (ODS~4) da Agenda 2030 busca garantir uma educação inclusiva, equitativa e de qualidade para todos~\citep{onu2015ods4}. Para saber se um estado caminha nessa direção, é preciso acompanhar indicadores ao longo do tempo. Dois dos mais usados no Brasil são a taxa de aprovação e a taxa de abandono, que o INEP calcula a partir da situação final de cada aluno no ano letivo~\citep{inep2026rendimento}.
+
+O governo de Mato Grosso do Sul publica, no seu Portal de Dados Abertos, um arquivo por ano com as matrículas e a situação final dos alunos de cada escola pública~\citep{dadosms2026matriculas}. Esses dados são públicos, mas não estão prontos para análise: cada ano fica em um arquivo separado, não existe um código que identifique a escola, e os nomes dos municípios aparecem com acentuação diferente. Responder a uma pergunta simples, como ``a aprovação melhorou no meu município?'', exige juntar e limpar vários arquivos.
+
+O problema tratado neste trabalho é, portanto, transformar esses arquivos em uma série histórica confiável e fácil de consultar, e usá-la para responder se a educação pública do estado está evoluindo. As principais contribuições são:
+
+\begin{itemize}
+    \item um sistema que carrega os dados de 2018 a 2026 em um banco relacional, usando orientação a objetos e tabelas \textit{hash} de forma explícita, com carga idempotente e validada;
+    \item um \textit{dashboard} interativo com filtros por município e por ano;
+    \item uma análise da evolução das taxas de aprovação e de abandono no estado;
+    \item um levantamento dos problemas de qualidade desses dados abertos, com regras documentadas sobre quais anos podem ser usados em cada indicador.
+\end{itemize}
+
+O restante do artigo está organizado assim: a Seção~\ref{works} apresenta os trabalhos relacionados; a Seção~\ref{methods} descreve os dados, o sistema e as métricas; a Seção~\ref{results} mostra os resultados; a Seção~\ref{discussion} discute os resultados e as limitações; e a Seção~\ref{conclusion} traz as conclusões.
+
+
+
+%%%%%%%%%%%%%%  R E L A T E D   W O R K S  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Trabalhos Relacionados}
+\label{works}
+
+O INEP define as taxas de rendimento escolar (aprovação, reprovação e abandono) a partir da situação final do aluno, e usa como denominador apenas os alunos que terminaram o ano com uma dessas três situações~\citep{inep2026rendimento}. Este trabalho segue a mesma definição, o que permite comparar os resultados com os indicadores oficiais.
+
+%% TODO (grupo): incluir de 2 a 4 artigos científicos reais e recentes sobre:
+%%  (a) análise de indicadores educacionais / evasão escolar no Brasil;
+%%  (b) uso de dados abertos governamentais e seus problemas de qualidade;
+%%  (c) dashboards para acompanhamento de indicadores públicos.
+%% Para cada um: o que fizeram e qual a diferença para este trabalho.
+\textbf{[A COMPLETAR: trabalhos científicos sobre indicadores educacionais, qualidade de dados abertos e \textit{dashboards} públicos, comparados com este trabalho.]}
+
+Diferente de análises feitas com planilhas ou com bibliotecas que escondem o processamento, este trabalho constrói explicitamente cada etapa (leitura, normalização, estruturas em memória e banco relacional), o que permite verificar e testar cada uma delas separadamente.
+
+
+
+%%%%%%%%%%%%%%  M A T E R I A I S  E   M E T O D O S   %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Materiais e Métodos}
+\label{methods}
+
+\subsection{Dataset}
+
+Os dados vêm do conjunto ``Matrículas por Unidade Escolar'' do Portal de Dados Abertos de Mato Grosso do Sul~\citep{dadosms2026matriculas}, acessado em outubro de 2026. São oito arquivos CSV, um por ano (2018 a 2024 e 2026; não há arquivo de 2025), todos com as mesmas colunas, codificados em UTF-8 e separados por vírgula. Cada linha representa uma escola em um ano. No total são 3.703 linhas (Tabela~\ref{table:dataset}).
+
+As colunas trazem o ano, o nome do município, o nome da escola e onze contagens de alunos: o total de matrículas (\texttt{MatriculasTotal}), dividido em matrícula inicial e matrícula após o censo, e as situações finais: transferidos, cancelados, falecidos, abandono, aprovados, reprovados, cursando e outras situações. Duas regras de consistência foram observadas e usadas como teste:
+
+\begin{itemize}
+    \item \texttt{MatriculasTotal} = matrícula inicial + matrícula após o censo;
+    \item \texttt{MatriculasTotal} = soma das oito situações finais.
+\end{itemize}
+
+\begin{table}[h!]
+\centering
+\caption{Número de escolas (linhas) e total de matrículas em cada arquivo anual. Não existe arquivo de 2025 na fonte.}
+\label{table:dataset}
+\begin{tabular}{ccc}
+\toprule
+Ano & Escolas & Matrículas \\
+\midrule
+2018 & 485 & 326.367 \\
+2019 & 475 & 293.195 \\
+2020 & 441 & 242.028 \\
+2021 & 442 & 248.780 \\
+2022 & 472 & 247.646 \\
+2023 & 467 & 237.574 \\
+2024 & 461 & 220.926 \\
+2026 & 460 & 199.489 \\
+\midrule
+Total & 3.703 & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Três características dos dados exigiram tratamento especial:
+
+\begin{enumerate}
+    \item \textbf{Não há código da escola.} O conjunto não traz o código INEP, então a escola foi identificada pelo par (município, nome da escola).
+    \item \textbf{A acentuação é inconsistente.} Alguns municípios aparecem com acento (``Água Clara'') e outros sem (``Anastacio'', ``Camapua''), então o nome não pode ser usado como chave sem tratamento.
+    \item \textbf{Algumas escolas não têm alunos com situação final.} Escolas como os Centros Estaduais de Educação de Jovens e Adultos (CEEJA) têm aprovados + reprovados + abandono = 0, porque todos os alunos estão em ``outras situações''. Isso causaria uma divisão por zero no cálculo das taxas.
+\end{enumerate}
+
+\subsection{Arquitetura do sistema}
+
+O sistema foi escrito em Python~3~\citep{vanrossum2009python} usando apenas a biblioteca padrão para a carga (módulos \texttt{csv}, \texttt{unicodedata} e \texttt{sqlite3}), sem bibliotecas de análise de dados, para que a leitura, as classes e as estruturas de dados ficassem visíveis no código. O banco é um arquivo SQLite~\citep{sqlite2026} e a interface usa o Streamlit~\citep{streamlit2026}. A Figura~\ref{fig:fluxo} mostra o fluxo dos dados.
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}[
+    caixa/.style={draw, rounded corners, align=center, font=\footnotesize, minimum height=0.9cm, text width=1.45cm},
+    seta/.style={->, thick}
+]
+\node[caixa] (csv) {8 arquivos CSV};
+\node[caixa, right=0.35cm of csv] (lista) {Lista de dicionários};
+\node[caixa, right=0.35cm of lista] (hash) {Objetos e \textit{hashes}};
+\node[caixa, right=0.35cm of hash] (banco) {SQLite};
+\node[caixa, below=0.6cm of banco] (app) {\textit{Dashboard}};
+\draw[seta] (csv) -- (lista);
+\draw[seta] (lista) -- (hash);
+\draw[seta] (hash) -- (banco);
+\draw[seta] (banco) -- (app);
+\end{tikzpicture}
+\caption{Fluxo dos dados: os CSVs são lidos como uma lista de dicionários, transformados em objetos ligados por tabelas \textit{hash}, gravados no SQLite e consultados pelo \textit{dashboard}.}
+\label{fig:fluxo}
+\end{figure}
+
+\textbf{Leitura e normalização.} Cada arquivo é lido com \texttt{csv.DictReader}, que transforma cada linha em um dicionário (nome da coluna $\rightarrow$ valor). Para que o mesmo município ou escola tenha sempre a mesma chave, todos os nomes passam por uma regra fixa de normalização: os acentos são removidos (decomposição Unicode NFD e descarte das marcas de acento), o texto é convertido para maiúsculas e os espaços repetidos são retirados. O nome original também é guardado, para ser exibido. Preferimos uma regra fixa a uma comparação por similaridade de nomes, porque a comparação aproximada poderia juntar escolas diferentes com nomes parecidos.
+
+\textbf{Orientação a objetos.} O domínio foi modelado com três classes. \texttt{Municipio} guarda o nome original, o nome normalizado e a lista das suas escolas. \texttt{Escola} guarda os nomes, uma referência ao seu município e a lista dos seus registros. \texttt{RegistroAnual} guarda o ano, as onze contagens convertidas para inteiro e uma referência à sua escola. As referências são bidirecionais: a partir de um município chega-se às escolas e aos registros, e a partir de um registro chega-se à escola e ao município. Uma quarta classe, \texttt{Totais}, soma as contagens de um grupo de registros e calcula as taxas.
+
+\textbf{Tabelas \textit{hash}.} Como a mesma escola aparece em vários anos, foi usado um dicionário Python (uma tabela \textit{hash}) com a chave (município normalizado, escola normalizada) para garantir que cada escola seja criada uma única vez (Algoritmo~\ref{alg:hash}). Um segundo \textit{hash}, com chave (município, ano), guarda os totais já somados para responder aos filtros. Em uma tabela \textit{hash}, a busca por chave tem custo médio $O(1)$, enquanto a busca em uma lista exige percorrer os elementos, com custo $O(n)$~\citep{cormen2009algorithms}.
+
+\begin{algorithm}[h!]
+\caption{Montagem dos \textit{hashes} sem escolas repetidas}
+\label{alg:hash}
+\begin{algorithmic}[1]
+\Require lista de linhas de todos os anos
+\Ensure \textit{hashes} \textit{municipios} e \textit{escolas}
+\For{cada linha}
+  \State $m \gets$ normalizar(município da linha)
+  \State $e \gets$ normalizar(escola da linha)
+  \If{$m \notin$ \textit{municipios}}
+    \State \textit{municipios}$[m] \gets$ novo Municipio
+  \EndIf
+  \If{$(m, e) \notin$ \textit{escolas}}
+    \State \textit{escolas}$[(m,e)] \gets$ nova Escola
+    \State ligar a escola ao município $m$
+  \EndIf
+  \State criar RegistroAnual e ligá-lo a \textit{escolas}$[(m,e)]$
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\textbf{Banco relacional.} O esquema tem três tabelas:
+
+\begin{itemize}
+    \item \texttt{municipio}(id, nome, nome\_normalizado \textsc{unique});
+    \item \texttt{escola}(id, nome, nome\_normalizado, municipio\_id \textsc{fk}), com \textsc{unique}(municipio\_id, nome\_normalizado);
+    \item \texttt{registro\_anual}(id, escola\_id \textsc{fk}, ano e as onze contagens), com \textsc{unique}(escola\_id, ano).
+\end{itemize}
+
+Os municípios são inseridos primeiro, depois as escolas e por último os registros, respeitando as chaves estrangeiras. Os identificadores gerados pelo SQLite são guardados em \textit{hashes} auxiliares (por exemplo, nome normalizado $\rightarrow$ id), que fazem a ponte entre os objetos em memória e as chaves estrangeiras do banco. Todas as inserções usam \texttt{INSERT OR IGNORE}: junto com as restrições \textsc{unique}, isso torna a carga idempotente, ou seja, executá-la duas vezes não duplica nenhum dado.
+
+\textbf{\textit{Dashboard}.} A interface tem um filtro de município (com a opção ``Todo o MS''), um filtro de intervalo de anos, cartões que comparam a taxa do último ano válido com a de 2018, gráficos de linha da evolução e uma tabela com os valores.
+
+\subsection{Métricas}
+
+Seguindo o padrão do INEP~\citep{inep2026rendimento}, as taxas usam como base apenas os alunos com situação final:
+
+\begin{align*}
+\text{base} &= \text{Aprovados} + \text{Reprovados} + \text{Abandono}\\
+\text{taxa de aprovação} &= \text{Aprovados} / \text{base} \times 100\\
+\text{taxa de reprovação} &= \text{Reprovados} / \text{base} \times 100\\
+\text{taxa de abandono} &= \text{Abandono} / \text{base} \times 100
+\end{align*}
+
+Ao agrupar escolas (por município ou pelo estado), as contagens são somadas primeiro e a divisão é feita uma única vez. Não se calcula a média das taxas das escolas, porque isso daria o mesmo peso a uma escola com 50 alunos e a uma com 2.000. Quando a base é zero, a taxa fica indefinida (\texttt{None} em Python e \texttt{NULL} no SQL, usando \texttt{NULLIF}), em vez de causar erro ou aparecer como 0\%.
+
+\subsection{Setup do Experimento}
+
+A avaliação foi feita em três partes:
+
+\begin{enumerate}
+    \item \textbf{Corretude da carga:} 32 testes automatizados (módulo \texttt{unittest}) cobrem leitura, normalização, classes, \textit{hashes} e banco. Além disso, consultas SQL de validação comparam a contagem de registros por ano no banco com a dos arquivos CSV e procuram registros que violem as duas regras de soma. Essas consultas retornam apenas as linhas com erro, de modo que zero linhas significa que tudo está correto.
+    \item \textbf{Desempenho das estruturas:} a busca dos totais de um município em um ano (Campo Grande, 2018) foi repetida 1.000 vezes de duas formas: percorrendo a lista com os 3.703 registros e consultando o \textit{hash} (município, ano). Foi medido o tempo médio por busca.
+    \item \textbf{Análise dos indicadores:} as taxas do estado e de cada município foram calculadas por consultas SQL e conferidas com os valores calculados em memória pela classe \texttt{Totais}. Antes da análise, verificamos ano a ano quantos alunos estavam em cada situação final, para decidir em quais anos cada taxa é confiável.
+\end{enumerate}
+
+Os experimentos foram executados com Python 3.14 e Streamlit 1.66.1 em um computador pessoal com Windows 10.
+
+
+
+%%%%%%%%%%%%%%  R E S U L T A D O S    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Resultados}
+\label{results}
+
+\subsection{Carga e validação}
+
+A carga resultou em 79 municípios, 598 escolas distintas e 3.703 registros anuais. A normalização não mudou o número de municípios (79 antes e depois), mas protege a chave contra variações de grafia. Já entre as escolas, ela reduziu o total de 599 para 598, ao juntar um caso em que o mesmo nome aparecia como ``MÜLLER'' e ``MULLER''. Nenhuma escola apareceu duas vezes no mesmo ano.
+
+Os 32 testes passaram. A contagem de registros por ano no banco foi igual à dos CSVs em todos os oito anos, e as duas regras de soma não tiveram nenhuma violação. Ao executar a carga uma segunda vez, os totais continuaram em 79, 598 e 3.703, o que confirma que a carga é idempotente.
+
+\subsection{Desempenho: lista versus \textit{hash}}
+
+A Tabela~\ref{table:busca} mostra o resultado da comparação. A busca no \textit{hash} foi cerca de 1.400 vezes mais rápida, e as duas formas retornaram o mesmo resultado. Em execuções diferentes a razão variou entre aproximadamente 1.400 e 1.600 vezes, mas a diferença de ordem de grandeza se manteve.
+
+\begin{table}[h!]
+\centering
+\caption{Tempo médio de 1.000 buscas dos totais de Campo Grande em 2018, sobre 3.703 registros.}
+\label{table:busca}
+\begin{tabular}{lcc}
+\toprule
+Estrutura & Complexidade & Tempo por busca \\
+\midrule
+Lista & $O(n)$ & 149,9 $\mu$s \\
+\textit{Hash} (município, ano) & $O(1)$ & 0,107 $\mu$s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Qualidade dos dados por ano}
+
+A verificação das situações finais revelou que nem todos os anos podem ser usados para todas as taxas:
+
+\begin{itemize}
+    \item \textbf{Abandono:} 10.490 alunos em 2018 e apenas 158 em 2019 (queda de 98,5\% em um ano, enquanto as matrículas caíram cerca de 10\%). De 2020 a 2026, o abandono é zero em todas as escolas.
+    \item \textbf{2024:} 184.949 dos 220.926 alunos (cerca de 84\%) estão como ``cursando'', só 3.484 aparecem como aprovados, e 379 das 461 escolas têm base zero.
+    \item \textbf{2026:} o ano letivo ainda não terminou, então não há aprovados, reprovados nem abandono, e todas as 460 escolas têm base zero.
+\end{itemize}
+
+Com isso, definimos as regras da Tabela~\ref{table:anos}. Elas ficam na camada de dados (constantes no módulo do banco), e não só no \textit{dashboard}, para que qualquer consulta ao banco siga a mesma regra. Fora dos anos válidos, a taxa é exibida como ``não disponível'', nunca como 0\%.
+
+\begin{table}[h!]
+\centering
+\caption{Anos usados em cada indicador e motivo.}
+\label{table:anos}
+\begin{tabular}{p{2.1cm}p{1.6cm}p{3.6cm}}
+\toprule
+Indicador & Anos & Motivo \\
+\midrule
+Matrículas & 2018--2026 & Preenchidas em todos os anos, sem erros \\
+Aprovação e reprovação & 2018--2023 & 2024 e 2026 sem resultados finais \\
+Abandono & 2018 & Não registrado a partir de 2019/2020 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Evolução dos indicadores no estado}
+
+A Tabela~\ref{table:taxas} e a Figura~\ref{fig:evolucao} mostram as taxas da rede pública. A aprovação subiu de 81,3\% em 2018 para 88,7\% em 2023 (+7,3 pontos percentuais), e a reprovação caiu de 14,6\% para 11,3\%. A maior parte da subida aconteceu entre 2018 e 2020; de 2020 a 2023 a aprovação ficou estável, entre 88,0\% e 89,4\%. A taxa de abandono só pode ser calculada para 2018: 4,0\% no estado e 5,4\% em Campo Grande. O total de matrículas caiu de 326.367 em 2018 para 237.574 em 2023 (-27,2\%) e para 199.489 em 2026.
+
+\begin{table}[h!]
+\centering
+\caption{Taxas da rede pública de Mato Grosso do Sul por ano (\%). ``n/d'' = não disponível, conforme a Tabela~\ref{table:anos}.}
+\label{table:taxas}
+\begin{tabular}{cccc}
+\toprule
+Ano & Aprovação & Reprovação & Abandono \\
+\midrule
+2018 & 81,3 & 14,6 & 4,0 \\
+2019 & 86,7 & 13,2 & n/d \\
+2020 & 89,4 & 10,6 & n/d \\
+2021 & 88,4 & 11,6 & n/d \\
+2022 & 88,0 & 12,0 & n/d \\
+2023 & 88,7 & 11,3 & n/d \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h!]
+\centering
+\begin{tikzpicture}
+\begin{axis}[
+    width=\linewidth, height=5cm,
+    xlabel={Ano}, ylabel={Taxa (\%)},
+    xtick={2018,2019,2020,2021,2022,2023},
+    x tick label style={/pgf/number format/1000 sep={}},
+    ymin=0, ymax=100,
+    legend style={at={(0.5,-0.32)}, anchor=north, legend columns=3, font=\footnotesize},
+    grid=major
+]
+\addplot[mark=*, thick] coordinates {(2018,81.3) (2019,86.7) (2020,89.4) (2021,88.4) (2022,88.0) (2023,88.7)};
+\addplot[mark=square*, thick, dashed] coordinates {(2018,14.6) (2019,13.2) (2020,10.6) (2021,11.6) (2022,12.0) (2023,11.3)};
+\addplot[mark=triangle*, only marks, mark size=3pt] coordinates {(2018,4.0)};
+\legend{Aprovação, Reprovação, Abandono (só 2018)}
+\end{axis}
+\end{tikzpicture}
+\caption{Evolução das taxas de aprovação e reprovação da rede pública de 2018 a 2023. O abandono só é confiável em 2018. Anos de 2024 e 2026 não aparecem porque não têm resultados finais.}
+\label{fig:evolucao}
+\end{figure}
+
+%% TODO (grupo): incluir uma captura de tela do dashboard (streamlit run app.py),
+%% salva em figures/dashboard.png, com uma legenda descrevendo filtros, cartões e gráficos.
+
+
+
+%%%%%%%%%%%%%%  D I S C U S S Ã O %%%%%%%%%%%%%%%%%%%%%%
+
+\section{Discussão}
+\label{discussion}
+
+\textbf{A aprovação melhorou, mas menos do que parece.} A subida de 7,3 pontos entre 2018 e 2023 precisa ser lida com cuidado. Em 2018 o abandono fazia parte da base; a partir de 2020 ele passou a ser zero, então a base passou a ter só aprovados e reprovados. Isso aumenta a taxa de aprovação mesmo que nada tenha mudado nas escolas. Se calcularmos a aprovação de 2018 sem o abandono na base, como nos anos seguintes, ela seria 81,3 / (81,3 + 14,6) $\approx$ 84,8\%. Comparada com essa referência, a melhora até 2023 é de cerca de 3,9 pontos, e não de 7,3. A queda da reprovação (de 14,6\% para 11,3\%) não depende do abandono, e por isso é a evidência mais segura de melhora. Também é importante notar que a maior mudança ocorreu em 2020 e 2021, anos de ensino remoto na pandemia, quando as regras de avaliação e aprovação mudaram em muitas redes; os dados não permitem separar esse efeito de uma melhora real.
+
+\textbf{O abandono não pode ser acompanhado.} A queda de 10.490 para 158 alunos em um ano, seguida de zeros em todas as escolas, é muito mais compatível com uma mudança no registro do que com o fim real do abandono escolar. Por isso a taxa de abandono foi limitada a 2018, e o principal indicador do ODS~4 ligado à permanência não pode ser avaliado com este conjunto de dados. Mostrar 0\% nesses anos seria uma informação falsa; por isso o sistema mostra ``não disponível''.
+
+\textbf{Queda das matrículas.} A rede pública perdeu 27\% das matrículas entre 2018 e 2023. Com os dados disponíveis não é possível saber a causa (por exemplo, municipalização de etapas de ensino, migração para outras redes ou queda da população em idade escolar), o que fica como pergunta para trabalhos futuros.
+
+\textbf{Decisões de projeto.} A falta de código da escola obrigou a identificar escolas por nome, o que funciona porque a normalização é feita com uma regra fixa. A desvantagem é que uma escola que mudou de nome entre os anos é tratada como duas escolas diferentes; a vantagem é que duas escolas diferentes com nomes parecidos nunca são juntadas por engano. A comparação entre lista e \textit{hash} confirmou na prática a diferença entre $O(n)$ e $O(1)$: com apenas 3.703 registros a diferença já passa de mil vezes, e ela cresceria com mais dados. Colocar as regras de anos válidos na camada de dados, e não na interface, garante que o \textit{dashboard} e qualquer outra consulta mostrem os mesmos números.
+
+\textbf{Limitações.} Os dados não incluem 2025, não trazem a etapa de ensino (fundamental ou médio), e as taxas a partir de 2020 não incluem o abandono. Não foi feito teste estatístico sobre a tendência, porque há apenas seis anos válidos para a aprovação e um para o abandono.
+
+
+
+%%%%%%%%%%%%%%  C O N C L U S O E S %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Conclusão}
+\label{conclusion}
+
+Este trabalho transformou oito arquivos de dados abertos em uma série histórica validada, armazenada em um banco relacional e consultada por um \textit{dashboard} com filtros por município e ano. O uso explícito de classes, de tabelas \textit{hash} e de restrições do banco permitiu remover escolas repetidas, fazer uma carga idempotente e conferir cada etapa com testes, sem nenhuma divergência em relação aos arquivos de origem. A busca por \textit{hash} foi cerca de 1.400 vezes mais rápida que a busca em lista.
+
+Sobre a pergunta principal, os dados indicam uma melhora moderada: a reprovação caiu de 14,6\% para 11,3\% entre 2018 e 2023, e a aprovação subiu, embora parte dessa subida venha da mudança no registro do abandono. O resultado mais importante, porém, é sobre os próprios dados: o abandono deixou de ser registrado e os anos mais recentes estão incompletos, o que hoje impede acompanhar parte das metas do ODS~4 com esse conjunto de dados.
+
+Como trabalhos futuros, sugerimos incluir o código INEP das escolas para identificá-las sem depender do nome, cruzar estes dados com o Censo Escolar para recuperar o abandono, separar os indicadores por etapa de ensino, e atualizar a carga quando os resultados de 2024 a 2026 forem publicados.
+
+
+
+%% Recomendado pelo template: declarar o uso de IA. Ajustem se necessário.
+\section*{Agradecimentos}
+Os autores usaram um assistente de IA (Claude, da Anthropic) como apoio no desenvolvimento do código e na redação deste texto. Os autores revisaram todo o conteúdo e assumem total responsabilidade pelo trabalho apresentado.
+
+
+%% References with bibTeX database:
+\bibliographystyle{elsarticle-harvard}
+\bibliography{references}
+
+
+\end{document}

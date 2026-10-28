@@ -1,0 +1,41 @@
+\documentclass[11pt]{letter}
+
+\include{ajustes}
+
+\usepackage{newcent}
+\usepackage{lipsum}
+
+% Margins                                                                           
+\topmargin = -1in
+\textheight = 8.5in
+\oddsidemargin = -10pt
+\textwidth = 6.5in
+\let\raggedleft\raggedright
+\begin{document}
+
+
+
+\begin{letter}{
+    Dr. \nomeAutor\\
+    Dom Bosco Catholic University\\
+	Tamandaré Av. 6000, Campo Grande, Brazil, 79117-900\\
+    +55 67 99832-8767\\
+    pistori@ucdb.br\\
+    \medskip
+    Dr. \nomeEditor \\
+    Editor-in-Chief\\
+    \textit{\nomeRevista}
+  }
+  \signature{
+    Dr. \nomeAutor\\
+%    Computer Engineering Department Dom Bosco Catholic University\\
+  }
+  \opening{Dear Editor:}
+
+We are pleased to submit an original research paper entitled \textbf{\nomeArtigo} for consideration by \nomeRevista. We confirm that this manuscript has not been published elsewhere and is not under consideration by another journal. We also confirm that there is no conflict of interest with any of the suggested reviewers. All authors have approved the manuscript and agree with its submission to \textbf{\nomeRevista}.
+		
+In this work, we propose a new approach to leverage the strengths of SegNets and superpixel segmentation by combining the results of both methods. The proposed approach has shown promising results for the problem of bovine segmentation on images captured in open and uncontrolled farm environment. Object segmentation is an important step for many computer vision systems and is specially hard for livestock images. Besides the new method, the paper also presents a new labeled dataset for live cattle segmentation. 
+
+  \closing{Sincerely,}
+\end{letter}
+\end{document}

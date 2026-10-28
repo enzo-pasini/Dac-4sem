@@ -1,0 +1,7 @@
+# Tema escuro, igual ao template dataprofessor/population-dashboard
+[theme]
+primaryColor = "#f63366"
+backgroundColor = "#111111"
+secondaryBackgroundColor = "#393939"
+textColor = "#fafafa"
+font = "sans serif"

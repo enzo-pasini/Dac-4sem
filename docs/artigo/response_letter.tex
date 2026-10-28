@@ -1,0 +1,65 @@
+\documentclass[11pt,a4paper]{article}
+
+% ALTERE O ARQUIVO AJUSTES.TEX PARA AJUSTAR NOMES DO EDITOR, REVISTA,
+% TÍTULO DO TRABALHO E AUTOR CORRESPONDENTE.
+
+\input{ajustes.tex}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{10pt}
+
+\usepackage{fullpage}
+\usepackage{color}
+\usepackage[english]{babel}
+%\usepackage{math}
+\usepackage{hyphenat}
+% \usepackage{url}
+\usepackage{hyperref}
+\usepackage{enumitem}
+
+\thispagestyle{empty}
+\pagestyle{empty} 
+
+\usepackage[round]{natbib}
+\bibliographystyle{plainnat}
+
+\begin{document}
+
+Dear Prof. \nomeEditor, Editor-in-Chief.
+
+Please find enclosed the revised version of the manuscript entitled \textbf{\nomeArtigo}. We believe that the suggestions provided by the reviewers improved the overall quality of the manuscript. Herein, we provided a point-by-point response to the statements, highlighting, in blue color, our responses and, in red color, the parts added or altered in the manuscript that we considered appropriate to showcase directly in this letter.
+
+Sincerely,
+
+Prof. \nomeAutor
+
+\subsection*{Responses to Reviewer \#1's remarks:}
+
+1. Although CNN based methods are usually employed using GPU, running time of the proposed method and CNN based methods on the CPU can also be a good verification to the superiority of the proposed method.
+
+\textcolor{blue}{R: A time-consuming experiment was performed in a single CPU comparing the proposed method with the CNN methods. The following paragraph was included in Section 4.4 along with the new Figure 9.}
+
+\textcolor{red}{We performed a time-consuming experiment to analyze the cost to compute our approach (with $r=6$ and $t=0.5$) and the convolutional networks under a CPU scenario, results for varying image size (square) are shown in Figure 9. The experiment was conducted using a single CPU on a machine with processor Intel® Core™ i7-7700HQ 2.80GHz, 11.7 GB of RAM memory and a Ubuntu 18.04 64 bits operating system. It is possible to observe that the fastest methods are AlexNet and the proposed method, performing under 1 second for the considered image sizes. The deeper networks perform slower due to its bigger architectures, where VGG-19 takes more time. It is important to notice that all the convolutional network architectures must be stored in memory and have a relatively costly training procedure, which we are not considering here.}
+
+2. Segundo comentário do revisor 1.
+
+\textcolor{blue}{R: A time-consuming experiment was performed in a single CPU comparing the proposed method ...}
+
+\textcolor{red}{We performed a time-consuming experiment to analyze the cost to compute our approach (with $r=6$ and $t=0.5$) and the convolutional networks under a CPU scenario, results for varying image size (square) are shown in Figure 9. The experiment was conducted using a s}
+
+
+
+
+
+\subsection*{Responses to Reviewer \#2's remarks:}
+
+
+1. Primeiro comentário do revisor 2.
+
+\textcolor{blue}{R: A time-consuming experiment was performed in a single CPU comparing the proposed method ... we have included the following references to better support these claims: ~\cite{bouvier2008,tola2010daisy}}
+
+\textcolor{red}{We performed a time-consuming experiment to analyze the cost to compute our approach (with $r=6$ and $t=0.5$) and the convolutional networks under a CPU scenario, results for varying image size (square) are shown in Figure 9. The experiment was conducted using a s}
+
+\bibliography{references}
+
+\end{document}
