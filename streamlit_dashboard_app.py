@@ -1,4 +1,4 @@
-"""Dashboard Streamlit. Rode com:  streamlit run app.py
+"""Dashboard Streamlit. Rode com:  streamlit run streamlit_dashboard_app.py
 
 Layout baseado no template https://github.com/dataprofessor/population-dashboard
 (barra lateral + 3 colunas: indicadores | mapa e gráficos | ranking e explicações).

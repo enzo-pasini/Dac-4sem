@@ -76,7 +76,7 @@ dac-ms/
 │   ├── estruturas.py     # hashes e agregações em memória
 │   ├── banco.py          # schema + inserts + consultas SQL
 │   └── carga.py          # script que roda tudo: CSV → memória → banco
-├── app.py                # dashboard Streamlit
+├── streamlit_dashboard_app.py                # dashboard Streamlit
 └── tests/
 ```
 
