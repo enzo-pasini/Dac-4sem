@@ -129,6 +129,10 @@ Clique em uma pergunta para ir direto à resposta.
 
 Fonte: [Portal de Dados Abertos de MS — Matrículas por Unidade Escolar](https://www.dados.ms.gov.br/dataset/matriculas-por-unidade-escolar)
 
+[![Página do Portal de Dados Abertos de MS com os arquivos CSV de 2018 a 2026](docs/img/portal-dados-ms.png)](https://www.dados.ms.gov.br/dataset/matriculas-por-unidade-escolar)
+
+*Página do portal onde os oito arquivos CSV foram baixados (clique na imagem para abrir).*
+
 São oito arquivos CSV, um por ano (2018 a 2024 e 2026; **a fonte não tem 2025**), todos com as
 mesmas colunas. Cada linha é uma escola em um ano.
 
